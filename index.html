@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nicolò — Livello 0.1</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:   #00ff88;
+      --violet:  #a855f7;
+      --blue:    #38bdf8;
+      --bg:      #05050f;
+      --card:    #0d0d1f;
+      --border:  #1e1e3a;
+      --text:    #cbd5e1;
+      --white:   #f1f5f9;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* ── SCANLINES overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 999; pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,.08) 3px,
+        rgba(0,0,0,.08) 4px
+      );
+    }
+
+    /* ── STARS ── */
+    .stars {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+    }
+    .star {
+      position: absolute; border-radius: 50%;
+      background: white; opacity: 0;
+      animation: twinkle var(--d, 3s) var(--delay, 0s) infinite ease-in-out;
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0; } 50% { opacity: var(--max-op, .6); }
+    }
+
+    /* ── BOOT SCREEN ── */
+    #boot {
+      position: fixed; inset: 0; z-index: 900;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      transition: opacity .8s ease;
+    }
+    #boot.hide { opacity: 0; pointer-events: none; }
+
+    #boot-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(.55rem, 1.5vw, .8rem);
+      color: var(--green);
+      width: min(560px, 90vw);
+      line-height: 1.9;
+      white-space: pre;
+    }
+
+    .cursor {
+      display: inline-block; width: .6em; height: 1em;
+      background: var(--green);
+      animation: blink .8s step-end infinite;
+      vertical-align: text-bottom;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+    /* ── MAIN CONTENT ── */
+    #main { position: relative; z-index: 1; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100svh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .65rem;
+      letter-spacing: .12em;
+      color: var(--green);
+      background: rgba(0,255,136,.08);
+      border: 1px solid rgba(0,255,136,.25);
+      border-radius: 4px;
+      padding: .35em .9em;
+      margin-bottom: 2rem;
+    }
+
+    .hero-name {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(2.2rem, 8vw, 5rem);
+      line-height: 1.15;
+      color: var(--white);
+      text-shadow:
+        0 0 30px rgba(168,85,247,.6),
+        0 0 80px rgba(168,85,247,.25);
+      letter-spacing: .02em;
+      margin-bottom: 1rem;
+    }
+
+    .hero-version {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(.75rem, 2.5vw, 1.1rem);
+      color: var(--violet);
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-date {
+      font-size: .85rem;
+      color: var(--blue);
+      letter-spacing: .06em;
+      margin-bottom: 3rem;
+    }
+
+    /* health bar */
+    .vitals {
+      display: flex; flex-direction: column; align-items: center; gap: .6rem;
+      margin-bottom: 3rem;
+    }
+    .vitals label {
+      font-size: .6rem; color: var(--green); letter-spacing: .1em; text-transform: uppercase;
+    }
+    .bar-track {
+      width: min(300px, 70vw); height: 14px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      border: 1px solid rgba(0,255,136,.2);
+    }
+    .bar-fill {
+      height: 100%; width: 0;
+      border-radius: 2px;
+      animation: fillBar 2.5s 1.5s ease forwards;
+    }
+    .bar-fill.hp  { background: linear-gradient(90deg, #00ff88, #00cc6a); }
+    .bar-fill.xp  { background: linear-gradient(90deg, #a855f7, #7c3aed); width: 3%; animation: none; }
+    @keyframes fillBar { to { width: 100%; } }
+
+    .scroll-hint {
+      font-size: .6rem; color: rgba(255,255,255,.3);
+      animation: bounce 2s ease-in-out infinite;
+      letter-spacing: .08em;
+    }
+    @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+
+    /* ── SECTION ── */
+    section {
+      padding: 5rem 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: .6rem;
+      color: var(--green);
+      letter-spacing: .15em;
+      margin-bottom: 2rem;
+      display: flex; align-items: center; gap: .8rem;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.4rem 1.2rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .3s, transform .3s;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--accent, var(--green));
+    }
+    .stat-card:hover { border-color: var(--accent, var(--green)); transform: translateY(-3px); }
+
+    .stat-icon { font-size: 1.4rem; margin-bottom: .6rem; }
+    .stat-label {
+      font-size: .55rem; color: rgba(255,255,255,.35);
+      letter-spacing: .1em; text-transform: uppercase; margin-bottom: .3rem;
+    }
+    .stat-value {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(.75rem, 2vw, 1rem);
+      color: var(--white);
+      line-height: 1.3;
+    }
+    .stat-sub {
+      font-size: .6rem; color: rgba(255,255,255,.3); margin-top: .3rem;
+    }
+
+    /* ── TERMINAL QUOTES ── */
+    .terminal-box {
+      background: #050510;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+    .terminal-bar {
+      background: var(--card);
+      padding: .55rem 1rem;
+      display: flex; align-items: center; gap: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.r { background: #ff5f57; }
+    .dot.y { background: #ffbd2e; }
+    .dot.g { background: #28ca41; }
+    .terminal-title {
+      margin-left: .5rem;
+      font-size: .55rem; color: rgba(255,255,255,.3); letter-spacing: .05em;
+    }
+    .terminal-body {
+      padding: 1.2rem 1.4rem;
+      font-size: clamp(.65rem, 1.8vw, .8rem);
+      line-height: 2;
+    }
+    .t-prompt { color: var(--violet); }
+    .t-cmd    { color: var(--white); }
+    .t-out    { color: var(--green); }
+    .t-comment{ color: rgba(255,255,255,.25); }
+
+    /* ── ACHIEVEMENT ── */
+    .achievements {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+    .ach {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.2rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+      transition: border-color .3s;
+    }
+    .ach:hover { border-color: var(--violet); }
+    .ach-icon {
+      font-size: 1.6rem; flex-shrink: 0;
+      filter: drop-shadow(0 0 8px rgba(168,85,247,.5));
+    }
+    .ach-name {
+      font-family: 'Press Start 2P', cursive;
+      font-size: .55rem; color: var(--violet);
+      margin-bottom: .4rem; line-height: 1.5;
+    }
+    .ach-desc {
+      font-size: .65rem; color: rgba(255,255,255,.4); line-height: 1.6;
+    }
+
+    /* ── MESSAGE FINALE ── */
+    .final {
+      text-align: center;
+      padding: 6rem 1.5rem;
+      background: radial-gradient(ellipse 70% 50% at 50% 50%, rgba(168,85,247,.08), transparent);
+    }
+    .final-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(1rem, 3.5vw, 1.8rem);
+      color: var(--white);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .final-sub {
+      font-size: clamp(.75rem, 2vw, .9rem);
+      color: rgba(255,255,255,.45);
+      line-height: 1.9;
+      max-width: 520px; margin: 0 auto 2rem;
+    }
+    .pixel-heart {
+      font-size: 2rem;
+      animation: heartbeat 1.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 12px rgba(255,100,100,.8));
+    }
+    @keyframes heartbeat {
+      0%,100% { transform: scale(1); }
+      14%      { transform: scale(1.2); }
+      28%      { transform: scale(1); }
+      42%      { transform: scale(1.15); }
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: .55rem;
+      color: rgba(255,255,255,.15);
+      letter-spacing: .08em;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 480px) {
+      .hero-name { font-size: 2rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- Boot screen -->
+<div id="boot">
+  <div id="boot-text"></div>
+</div>
+
+<!-- Main -->
+<div id="main" style="opacity:0; transition: opacity 1s;">
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="badge">✦ NUOVO GIOCATORE RILEVATO ✦</div>
+    <h1 class="hero-name">NICOLÒ</h1>
+    <p class="hero-version">v 0.1 — Early Access Release</p>
+    <p class="hero-date">// Deployed on  08.09.2026 at 00:00 UTC+0 //</p>
+
+    <div class="vitals">
+      <label>❤ HP</label>
+      <div class="bar-track"><div class="bar-fill hp"></div></div>
+      <label style="margin-top:.4rem">⭐ XP</label>
+      <div class="bar-track"><div class="bar-fill xp"></div></div>
+    </div>
+
+    <p class="scroll-hint">▼  scroll per esplorare il profilo  ▼</p>
+  </header>
+
+  <!-- STATS -->
+  <section>
+    <p class="section-label">// CHARACTER STATS</p>
+    <div class="stats-grid">
+
+      <div class="stat-card" style="--accent: #00ff88">
+        <div class="stat-icon">📦</div>
+        <div class="stat-label">Versione</div>
+        <div class="stat-value">0.1</div>
+        <div class="stat-sub">Build stabile · EA Day 0</div>
+      </div>
+
+      <div class="stat-card" style="--accent: #38bdf8">
+        <div class="stat-icon">📅</div>
+        <div class="stat-label">Data di Deploy</div>
+        <div class="stat-value">08 / 09<br>2026</div>
+        <div class="stat-sub">git init life</div>
+      </div>
+
+      <div class="stat-card" style="--accent: #a855f7">
+        <div class="stat-icon">🕹</div>
+        <div class="stat-label">Classe</div>
+        <div class="stat-value">BABY<br>CODER</div>
+        <div class="stat-sub">Starter kit incluso</div>
+      </div>
+
+      <div class="stat-card" style="--accent: #f59e0b">
+        <div class="stat-icon">🌍</div>
+        <div class="stat-label">Server</div>
+        <div class="stat-value">PLANET<br>EARTH</div>
+        <div class="stat-sub">Ping: 0ms (offline)</div>
+      </div>
+
+      <div class="stat-card" style="--accent: #ec4899">
+        <div class="stat-icon">💾</div>
+        <div class="stat-label">Modalità</div>
+        <div class="stat-value">STORY<br>MODE</div>
+        <div class="stat-sub">No tutorial disponibile</div>
+      </div>
+
+      <div class="stat-card" style="--accent: #22d3ee">
+        <div class="stat-icon">⚙️</div>
+        <div class="stat-label">Difficoltà</div>
+        <div class="stat-value">MAX<br>ADORABLE</div>
+        <div class="stat-sub">Unbeatable</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- TERMINAL -->
+  <section>
+    <p class="section-label">// SYSTEM LOG</p>
+    <div class="terminal-box">
+      <div class="terminal-bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="terminal-title">nicolo_life.sh — bash</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="t-prompt">nicolò@earth:~$</span> <span class="t-cmd">./bootstrap.sh --name="Nicolò"</span></div>
+        <div class="t-out">  → Caricamento esistenza in corso...</div>
+        <div class="t-out">  → Inizializzazione polmoni: ✓</div>
+        <div class="t-out">  → Caricamento vocina: ✓  (volume: MAX)</div>
+        <div class="t-out">  → Connessione a mamma &amp; papà: ✓ (latenza: 0ms)</div>
+        <div class="t-out">  → Deploy completato! 🎉</div>
+        <div>&nbsp;</div>
+        <div><span class="t-prompt">nicolò@earth:~$</span> <span class="t-cmd">cat first_commit.txt</span></div>
+        <div class="t-out">  "Il codice più bello che il mondo abbia mai visto."</div>
+        <div>&nbsp;</div>
+        <div><span class="t-prompt">nicolò@earth:~$</span> <span class="t-cmd">check_bugs --version 0.1</span></div>
+        <div class="t-comment">  # Risultato: 0 bug. Solo feature non documentate. 🍼</div>
+        <div>&nbsp;</div>
+        <div><span class="t-prompt">nicolò@earth:~$</span> <span class="t-cmd">sudo give --item="amore" --quantity=∞</span></div>
+        <div class="t-out">  → Permesso concesso da: Mamma, Papà &amp; tutta la famiglia ✓</div>
+        <div>&nbsp;</div>
+        <div><span class="t-prompt">nicolò@earth:~$</span> <span class="t-cmd cursor-line">_</span><span class="cursor"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACHIEVEMENTS -->
+  <section>
+    <p class="section-label">// ACHIEVEMENTS SBLOCCATI</p>
+    <div class="achievements">
+
+      <div class="ach">
+        <div class="ach-icon">🏆</div>
+        <div>
+          <div class="ach-name">FIRST SPAWN</div>
+          <div class="ach-desc">Completato il tutorial più difficile: nascere. Achievement raro al 100%.</div>
+        </div>
+      </div>
+
+      <div class="ach">
+        <div class="ach-icon">😭</div>
+        <div>
+          <div class="ach-name">PING CHECK</div>
+          <div class="ach-desc">Primo output audio rilevato. Latenza: 0ms. Volume: esagerato.</div>
+        </div>
+      </div>
+
+      <div class="ach">
+        <div class="ach-icon">🍼</div>
+        <div>
+          <div class="ach-name">EARLY FEEDER</div>
+          <div class="ach-desc">Primo pasto completato. Ottimizzazione energetica attiva.</div>
+        </div>
+      </div>
+
+      <div class="ach">
+        <div class="ach-icon">💤</div>
+        <div>
+          <div class="ach-name">IDLE MODE</div>
+          <div class="ach-desc">Capace di dormire ovunque, in qualsiasi posizione. Skill leggendaria.</div>
+        </div>
+      </div>
+
+      <div class="ach">
+        <div class="ach-icon">👀</div>
+        <div>
+          <div class="ach-name">WORLD LOADING</div>
+          <div class="ach-desc">Prima esplorazione visiva del mondo completata. RAM: in caricamento.</div>
+        </div>
+      </div>
+
+      <div class="ach">
+        <div class="ach-icon">❤️</div>
+        <div>
+          <div class="ach-name">FULL PARTY</div>
+          <div class="ach-desc">Famiglia al completo. Bonus: +∞ amore. Debuff: sonno ridotto.</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FINAL MESSAGE -->
+  <div class="final">
+    <p class="pixel-heart">❤️</p>
+    <br>
+    <h2 class="final-title">Benvenuto<br>nel gioco,<br>piccolo eroe.</h2>
+    <p class="final-sub">
+      Non ci sono cheat code per crescere,<br>
+      nessuna guida su come farlo perfettamente —<br>
+      ma hai il party migliore del server al tuo fianco.<br><br>
+      Il tuo save file non verrà mai cancellato. 💜
+    </p>
+    <p style="font-size:.6rem; color:rgba(255,255,255,.2); letter-spacing:.1em;">
+      PRESS START TO PLAY &nbsp;·&nbsp; 08.09.2026
+    </p>
+  </div>
+
+  <footer>
+    © 2026 Nicolò Inc. · v0.1-stable · Open Source (MIT) · All rights reserved ∞
+  </footer>
+
+</div>
+
+<script>
+  /* ── Stars ── */
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 140; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + .5;
+    s.style.cssText = `
+      left:${Math.random()*100}%;
+      top:${Math.random()*100}%;
+      width:${size}px; height:${size}px;
+      --d:${(Math.random()*4+2).toFixed(1)}s;
+      --delay:${(Math.random()*5).toFixed(1)}s;
+      --max-op:${(Math.random()*.5+.2).toFixed(2)};
+    `;
+    starsEl.appendChild(s);
+  }
+
+  /* ── Boot sequence ── */
+  const lines = [
+    '  BIOS v26.9.8  ·  Nicolò Systems™',
+    '  ──────────────────────────────────────',
+    '  Rilevamento hardware... OK',
+    '  Caricamento cuore............ ████████ 100%',
+    '  Init polmoni................. ████████ 100%',
+    '  Compilazione sorriso......... ████████ 100%',
+    '  Installazione ciccia......... ████████ 100%',
+    '  Montaggio occhioni........... ████████ 100%',
+    '  ──────────────────────────────────────',
+    '  KERNEL PANIC: troppa dolcezza',
+    '  >> Eccezione gestita ✓',
+    '  ──────────────────────────────────────',
+    '  Avvio NICOLÒ OS v0.1 ...',
+    '  Buonvenuto nel mondo, piccolo. 🍼',
+  ];
+
+  const bootText = document.getElementById('boot-text');
+  const boot = document.getElementById('boot');
+  const main = document.getElementById('main');
+
+  let li = 0, ci = 0;
+  let current = '';
+
+  function typeNext() {
+    if (li >= lines.length) {
+      setTimeout(() => {
+        boot.classList.add('hide');
+        main.style.opacity = '1';
+      }, 700);
+      return;
+    }
+    const line = lines[li];
+    if (ci < line.length) {
+      current += line[ci];
+      bootText.textContent = lines.slice(0, li).join('\n') + (li > 0 ? '\n' : '') + current;
+      ci++;
+      setTimeout(typeNext, 22 + Math.random() * 18);
+    } else {
+      current = '';
+      ci = 0;
+      li++;
+      bootText.textContent = lines.slice(0, li).join('\n');
+      setTimeout(typeNext, 120);
+    }
+  }
+  setTimeout(typeNext, 400);
+</script>
+</body>
+</html>
